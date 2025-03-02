@@ -17,79 +17,113 @@ const categories = {
         hint: 'guess the sport'
     },
 }
-// global variables
-let currentWord = '' //split each letter as an item in a n array
+
+// Global variables
+let currentWord = '' // Split each letter as an item in an array
 let guessedLetters = []
 let score = 0
 let maxTries = 8
 let wrongGuesses = 0
+let gamesWon = 0
+let gamesLost = 0
+let currentDifficulty = 'medium'
 
-// state variables
 // DOM elements
 const wordDisplay = document.getElementById('word-display');
 const keyboard = document.getElementById('keyboard');
 const messageElement = document.getElementById('message');
 const newGameBtn = document.getElementById('new-game-btn');
-const triesLeft  = document.getElementById('tries-left');
+const triesLeft = document.getElementById('tries-left');
 const scoreElement = document.getElementById('score');
 const hintElement = document.getElementById('hint');
 const categorySelect = document.getElementById('category-select');
 const hangmanParts = document.querySelectorAll('.hangman-part');
+const difficultySelect = document.getElementById('difficulty-select');
+const statsElement = document.getElementById('game-stats');
+const modalOverlay = document.getElementById('modal-overlay');
+const modalContent = document.getElementById('modal-content');
+const modalCloseBtn = document.getElementById('modal-close');
+const modalPlayAgainBtn = document.getElementById('modal-play-again');
 
+// Difficulty settings
+const difficultySettings = {
+    easy: {
+        maxLength: 5,
+        maxTries: 10
+    },
+    medium: {
+        maxLength: 8,
+        maxTries: 8
+    },
+    hard: {
+        maxLength: 12,
+        maxTries: 6
+    }
+};
 
-//gameplay:
-// 1. there is a current word (randomly chosen by our program from the dataset)
-// 2. player will guess the word, letter by letter 
-// 3. once a letter that is part of a word is clicked, if the letter appears multiple times in the word, it places that letter everywhere
-// 4. there is place to display guessed letters (initially be dashes)
-// 5. when the right or wrong letter is clicked, we should give interaction feedback colour
-// 6. we have to  store correct guesses, match it with current word set
-// 7. keep scores
-// 8. how many tries (maximum guesses allowed)
-
-// main function that initialises the game
-function gamePlay(){
-    // clean out the  the state
+// Main function that initializes the game
+function gamePlay() {
+    // Clean out the state
     guessedLetters = []
     wrongGuesses = 0
 
-    // reset the visual part if the state
-    triesLeft.textContent = maxTries;
-    messageElement.textContent = ' ';
+    // Apply difficulty settings
+    currentDifficulty = difficultySelect ? difficultySelect.value : 'medium';
+    maxTries = difficultySettings[currentDifficulty].maxTries;
 
-    // get current category
+    // Reset the visual part of the state
+    triesLeft.textContent = maxTries;
+    messageElement.textContent = '';
+
+    // Get current category
     const category = categorySelect.value;
     hintElement.textContent = categories[category].hint;
-   
 
-    // generate the random word from the chosen category
+    // Generate the random word from the chosen category based on difficulty
     const words = categories[category].words;
-    currentWord = words[Math.floor(Math.random() * words.length)];
+    const filteredWords = words.filter(word => 
+        word.length <= difficultySettings[currentDifficulty].maxLength
+    );
+    
+    if (filteredWords.length > 0) {
+        currentWord = filteredWords[Math.floor(Math.random() * filteredWords.length)].toLowerCase();
+    } else {
+        // Fallback if no words match the difficulty criteria
+        currentWord = words[Math.floor(Math.random() * words.length)].toLowerCase();
+    }
 
-    console.log(currentWord)
+    console.log(currentWord);
 
-    // function to display guessed letters(word)
+    // Update stats display
+    updateStats();
+
+    // Function to display guessed letters(word)
     createWordDisplay();
 
-    // create keyboard
+    // Create keyboard
     createKeyboard();
 
-    // create function reset hangman 
-    resetHangman()
+    // Create function reset hangman 
+    resetHangman();
+    
+    // Hide any open modal
+    hideModal();
 }
-function createWordDisplay(){
+
+function createWordDisplay() {
     wordDisplay.innerHTML = '';
-    for (let i = 0; i < currentWord.length; i++){
-        const letterBox =  document.createElement('div');
+    for (let i = 0; i < currentWord.length; i++) {
+        const letterBox = document.createElement('div');
         letterBox.className = 'letter-box';
         letterBox.dataset.letter = currentWord[i];
-        wordDisplay.appendChild(letterBox)
+        wordDisplay.appendChild(letterBox);
     }
 }
-function createKeyboard(){
+
+function createKeyboard() {
     keyboard.innerHTML = '';
     const letters = 'abcdefghijklmnopqrstuvwxyz';
-    for(let i = 0; i < letters.length; i++){
+    for (let i = 0; i < letters.length; i++) {
         const key = document.createElement('button');
         key.className = 'key';
         key.textContent = letters[i];
@@ -98,68 +132,149 @@ function createKeyboard(){
     }
 }
 
-function resetHangman(){
-    hangmanParts.forEach((part, index)=> {
-        if (index < 2){
-            part.style.display = 'block'
-        }else{
-            part.style.display = 'none'
+function resetHangman() {
+    hangmanParts.forEach((part, index) => {
+        if (index < 2) {
+            part.style.display = 'block';
+        } else {
+            part.style.display = 'none';
         }
-    })
+    });
 }
 
-function handleGuess(letter){
-    // deny function run when tries max have been reached or the letter has been clicked before
-    if (guessedLetters.includes(letter) || wrongGuesses >= maxTries || isWordComplete() ){ 
-        return
+function handleGuess(letter) {
+    // Deny function run when tries max have been reached or the letter has been clicked before
+    if (guessedLetters.includes(letter) || wrongGuesses >= maxTries || isWordComplete()) {
+        return;
     }
 
     guessedLetters.push(letter);
 
-    // update the keyboard button when it has been used
-    const key  = [...keyboard.children].find(key => key.textContent === letter);
+    // Update the keyboard button when it has been used
+    const key = [...keyboard.children].find(key => key.textContent === letter);
     key.classList.add('used');
 
-    if (currentWord.includes(letter)){
+    if (currentWord.includes(letter)) {
         key.classList.add('correct');
         updateWordDisplay(letter);
         
-    }else{
+        // Check if word is complete after updating the display
+        if (isWordComplete()) {
+            handleWin();
+        }
+    } else {
         key.classList.add('wrong');
-        wrongGuesses ++
+        wrongGuesses++;
         triesLeft.textContent = maxTries - wrongGuesses;
         updateHangman();
+        
+        // Check if game is over (lost)
+        if (wrongGuesses >= maxTries) {
+            handleLoss();
+        }
     }
 }
 
-function updateWordDisplay (letter){
+function updateWordDisplay(letter) {
     const letterBoxes = wordDisplay.children;
-    for (let i = 0; i < letterBoxes.length; i++){
-        if(letterBoxes[i].dataset.letter === letter){
+    for (let i = 0; i < letterBoxes.length; i++) {
+        if (letterBoxes[i].dataset.letter === letter) {
             letterBoxes[i].textContent = letter;
         }
     }
 }
-function updateHangman(){
-    if(wrongGuesses + 1 < hangmanParts.length){
-        hangmanParts[wrongGuesses + 1].style.display ='block';
+
+function updateHangman() {
+    if (wrongGuesses + 1 < hangmanParts.length) {
+        hangmanParts[wrongGuesses + 1].style.display = 'block';
     }
 }
-function isWordComplete(){
+
+function isWordComplete() {
     const letterBoxes = wordDisplay.children;
-    for(let i = 0; i < letterBoxes.length; i++){
-        const letter  = letterBoxes[i].dataset.letter;
-        if(!guessedLetters.includes(letter)){
+    for (let i = 0; i < letterBoxes.length; i++) {
+        const letter = letterBoxes[i].dataset.letter;
+        if (!guessedLetters.includes(letter)) {
             return false;
         }
-    }return true;
+    }
+    return true;
 }
 
-// function handleWin() {
+// New functions for win/loss handling
+function handleWin() {
+    score += 10;
+    gamesWon++;
+    scoreElement.textContent = score;
+    updateStats();
+    
+    showModal('You Win!', `Congratulations! You guessed "${currentWord}" correctly!`, 'win');
+}
 
-// }
-// event listeners
-categorySelect.addEventListener('change', gamePlay)
-newGameBtn.addEventListener('click', gamePlay)
-// call function
-gamePlay()
+function handleLoss() {
+    gamesLost++;
+    updateStats();
+    
+    // Reveal the correct word
+    const letterBoxes = wordDisplay.children;
+    for (let i = 0; i < letterBoxes.length; i++) {
+        letterBoxes[i].textContent = letterBoxes[i].dataset.letter;
+        if (!guessedLetters.includes(letterBoxes[i].dataset.letter)) {
+            letterBoxes[i].classList.add('missed');
+        }
+    }
+    
+    showModal('Game Over', `Sorry, you ran out of tries! The word was "${currentWord}".`, 'loss');
+}
+
+function updateStats() {
+    if (statsElement) {
+        statsElement.innerHTML = `
+            <p>Games Won: ${gamesWon}</p>
+            <p>Games Lost: ${gamesLost}</p>
+            <p>Current Difficulty: ${currentDifficulty.charAt(0).toUpperCase() + currentDifficulty.slice(1)}</p>
+        `;
+    }
+}
+
+// Modal functions
+function showModal(title, message, type) {
+    if (modalOverlay && modalContent) {
+        const modalTitle = document.createElement('h2');
+        modalTitle.textContent = title;
+        
+        const modalMessage = document.createElement('p');
+        modalMessage.textContent = message;
+        
+        modalContent.innerHTML = '';
+        modalContent.classList.remove('win', 'loss');
+        modalContent.classList.add(type);
+        modalContent.appendChild(modalTitle);
+        modalContent.appendChild(modalMessage);
+        
+        modalOverlay.classList.add('active');
+    }
+}
+
+function hideModal() {
+    if (modalOverlay) {
+        modalOverlay.classList.remove('active');
+    }
+}
+
+// Event listeners
+if (categorySelect) categorySelect.addEventListener('change', gamePlay);
+if (newGameBtn) newGameBtn.addEventListener('click', gamePlay);
+if (difficultySelect) difficultySelect.addEventListener('change', gamePlay);
+if (modalCloseBtn) modalCloseBtn.addEventListener('click', hideModal);
+if (modalPlayAgainBtn) modalPlayAgainBtn.addEventListener('click', gamePlay);
+
+// Add keyboard support
+document.addEventListener('keydown', (e) => {
+    if (/^[a-z]$/.test(e.key)) {
+        handleGuess(e.key);
+    }
+});
+
+// Call function to start the game
+gamePlay();
