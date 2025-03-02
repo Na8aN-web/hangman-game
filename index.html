@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css">
     <title>Hangman Game</title>
-
 </head>
 <body>
     <header>
@@ -14,23 +13,41 @@
     </header>
     
     <main>
-        <div class="category-selector">
-            <select id="category-select">
-                <option value="animals">Animals</option>
-                <option value="countries">Countries</option>
-                <option value="fruits">Fruits</option>
-                <option value="sports">Sports</option>
-            </select>
+        <div class="game-controls">
+            <div class="control-item">
+                <label for="category-select">Category:</label>
+                <select id="category-select">
+                    <option value="animals">Animals</option>
+                    <option value="countries">Countries</option>
+                    <option value="fruits">Fruits</option>
+                    <option value="sports">Sports</option>
+                </select>
+            </div>
+            
+            <div class="control-item">
+                <label for="difficulty-select">Difficulty:</label>
+                <select id="difficulty-select">
+                    <option value="easy">Easy</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="hard">Hard</option>
+                </select>
+            </div>
         </div>
         
         <div class="game-container">
             <div class="game-info">
-                <div>Tries left: <span id="tries-left">6</span></div>
+                <div>Tries left: <span id="tries-left">8</span></div>
                 <div>Score: <span id="score">0</span></div>
             </div>
             
             <div class="hint" id="hint">
                 Hint will appear here...
+            </div>
+            
+            <div class="game-stats" id="game-stats">
+                <p>Games Won: 0</p>
+                <p>Games Lost: 0</p>
+                <p>Current Difficulty: Medium</p>
             </div>
             
             <div class="hangman-drawing" id="hangman-drawing">
@@ -70,8 +87,18 @@
             
             <button class="new-game-btn" id="new-game-btn">New Game</button>
         </div>
+        
+        <!-- Game Over Modal -->
+        <div class="modal-overlay" id="modal-overlay">
+            <div class="modal-content" id="modal-content">
+                <!-- Content will be dynamically inserted here -->
+            </div>
+            <div class="modal-buttons">
+                <button id="modal-close">Close</button>
+                <button id="modal-play-again">Play Again</button>
+            </div>
+        </div>
     </main>
     <script src="script.js"></script>
-        
 </body>
 </html>
